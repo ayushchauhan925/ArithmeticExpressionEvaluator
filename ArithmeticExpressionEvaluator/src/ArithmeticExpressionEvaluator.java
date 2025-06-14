@@ -78,7 +78,6 @@ public class ArithmeticExpressionEvaluator {
             char c = expression.charAt(i);
             if (Character.isWhitespace(c)) {
                 i++;
-                continue;
             }
             if (Character.isLetter(c)) {
                 StringBuilder func = new StringBuilder();
@@ -153,7 +152,9 @@ public class ArithmeticExpressionEvaluator {
                 while (!stack.isEmpty() && !isOpeningDelimiter(stack.peek())) {
                     output.add(stack.pop());
                 }
-                if (stack.isEmpty()) throw new InvalidExpressionException("Mismatched delimiters");
+                if (stack.isEmpty()) {
+                    throw new InvalidExpressionException("Mismatched delimiters");
+                }
                 stack.pop();
                 if (!stack.isEmpty() && (FUNCTIONS.contains(stack.peek()) || stack.peek().equals("√"))) {
                     output.add(stack.pop());
@@ -170,7 +171,9 @@ public class ArithmeticExpressionEvaluator {
             }
         }
         while (!stack.isEmpty()) {
-            if (isOpeningDelimiter(stack.peek())) throw new InvalidExpressionException("Mismatched delimiters");
+            if (isOpeningDelimiter(stack.peek())) {
+                throw new InvalidExpressionException("Mismatched delimiters");
+            }
             output.add(stack.pop());
         }
         return output;
@@ -204,7 +207,9 @@ public class ArithmeticExpressionEvaluator {
                 stack.push(new BigDecimal(factorial(val.intValueExact()), PRECISION));
             } else if (token.equals("√")) {
                 BigDecimal val = stack.pop();
-                if (val.compareTo(BigDecimal.ZERO) < 0) throw new OutOfDomainException("Square root of negative number");
+                if (val.compareTo(BigDecimal.ZERO) < 0) {
+                    throw new OutOfDomainException("Square root of negative number");
+                }
                 stack.push(new BigDecimal(Math.sqrt(val.doubleValue()), PRECISION));
             } else if (token.equals("%")) {
                 BigDecimal val = stack.pop();
@@ -220,32 +225,48 @@ public class ArithmeticExpressionEvaluator {
                         stack.push(new BigDecimal(Math.cos(angle), PRECISION));
                         break;
                     case "tan":
-                        if (Math.abs(Math.cos(angle)) < 1e-10) throw new ArithmeticException("Undefined tan() value");
+                        if (Math.abs(Math.cos(angle)) < 1e-10) {
+                            throw new ArithmeticException("Undefined tan() value");
+                        }
                         stack.push(new BigDecimal(Math.tan(angle), PRECISION));
                         break;
                     case "asin":
-                        if (arg.compareTo(BigDecimal.valueOf(-1)) < 0 || arg.compareTo(BigDecimal.valueOf(1)) > 0) throw new OutOfDomainException("asin input out of range [-1, 1]");
+                        if (arg.compareTo(BigDecimal.valueOf(-1)) < 0 || arg.compareTo(BigDecimal.valueOf(1)) > 0) {
+                            throw new OutOfDomainException("asin input out of range [-1, 1]");
+                        }
                         double asinResult = Math.asin(arg.doubleValue());
-                        if (useDegrees) asinResult = Math.toDegrees(asinResult);
+                        if (useDegrees) {
+                            asinResult = Math.toDegrees(asinResult);
+                        }
                         stack.push(new BigDecimal(asinResult, PRECISION));
                         break;
                     case "acos":
-                        if (arg.compareTo(BigDecimal.valueOf(-1)) < 0 || arg.compareTo(BigDecimal.valueOf(1)) > 0) throw new OutOfDomainException("acos input out of range [-1, 1]");
+                        if (arg.compareTo(BigDecimal.valueOf(-1)) < 0 || arg.compareTo(BigDecimal.valueOf(1)) > 0) {
+                            throw new OutOfDomainException("acos input out of range [-1, 1]");
+                        }
                         double acosResult = Math.acos(arg.doubleValue());
-                        if (useDegrees) acosResult = Math.toDegrees(acosResult);
+                        if (useDegrees) {
+                            acosResult = Math.toDegrees(acosResult);
+                        }
                         stack.push(new BigDecimal(acosResult, PRECISION));
                         break;
                     case "atan":
                         double atanResult = Math.atan(arg.doubleValue());
-                        if (useDegrees) atanResult = Math.toDegrees(atanResult);
+                        if (useDegrees) {
+                            atanResult = Math.toDegrees(atanResult);
+                        }
                         stack.push(new BigDecimal(atanResult, PRECISION));
                         break;
                     case "ln":
-                        if (arg.compareTo(BigDecimal.ZERO) <= 0) throw new ArithmeticException("ln of non-positive number");
+                        if (arg.compareTo(BigDecimal.ZERO) <= 0) {
+                            throw new ArithmeticException("ln of non-positive number");
+                        }
                         stack.push(new BigDecimal(Math.log(arg.doubleValue()), PRECISION));
                         break;
                     case "log":
-                        if (arg.compareTo(BigDecimal.ZERO) <= 0) throw new ArithmeticException("log of non-positive number");
+                        if (arg.compareTo(BigDecimal.ZERO) <= 0) {
+                            throw new ArithmeticException("log of non-positive number");
+                        }
                         stack.push(new BigDecimal(Math.log10(arg.doubleValue()), PRECISION));
                         break;
                 }
@@ -263,7 +284,9 @@ public class ArithmeticExpressionEvaluator {
                         stack.push(a.multiply(b, PRECISION));
                         break;
                     case "/":
-                        if (b.compareTo(BigDecimal.ZERO) == 0) throw new ZeroDivisionException("Division by zero");
+                        if (b.compareTo(BigDecimal.ZERO) == 0) {
+                            throw new ZeroDivisionException("Division by zero");
+                        }
                         stack.push(a.divide(b, PRECISION));
                         break;
                     case "^":
@@ -300,7 +323,9 @@ public class ArithmeticExpressionEvaluator {
                 }
             }
         }
-        if (stack.size() != 1) throw new InvalidExpressionException("Invalid expression: incorrect number of operands or operators");
+        if (stack.size() != 1) {
+            throw new InvalidExpressionException("Invalid expression: incorrect number of operands or operators");
+        }
         return stack.pop();
     }
 
@@ -348,9 +373,13 @@ public class ArithmeticExpressionEvaluator {
      * @throws ArithmeticException If n is negative.
      */
     private static double factorial(int n) {
-        if (n < 0) throw new ArithmeticException("Factorial of negative number");
+        if (n < 0) {
+            throw new ArithmeticException("Factorial of negative number");
+        }
         double result = 1;
-        for (int i = 2; i <= n; i++) result *= i;
+        for (int i = 2; i <= n; i++) {
+            result *= i;
+        }
         return result;
     }
 
