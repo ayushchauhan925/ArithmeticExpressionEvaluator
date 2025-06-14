@@ -25,12 +25,14 @@
 /**
  * ArithmeticExpressionEvaluator is a Java class that evaluates mathematical expressions provided as strings.
  * It supports basic arithmetic operations (+, -, *, /, ^), trigonometric functions (sin, cos, tan, etc.),
- * constants (pi, e), and special operations (factorial, square root, percentage).
- * The evaluator uses high-precision arithmetic via BigDecimal and supports degree or radian modes for trigonometric functions.
+ * constants (pi, e), and special operations (factorial, square root, percentage). The evaluator now
+ * recognizes { and [ as alternative delimiters to parentheses for grouping expressions.
+ * It uses high-precision arithmetic via BigDecimal and supports degree or radian modes for trigonometric functions.
  *
  * @author Ayush Chauhan
- * @version 1.0
+ * @version 1.1
  * @since 2025-07-01
+ * @updated 2025-06-14
  */
 import java.util.*;
 import java.math.BigDecimal;
@@ -46,7 +48,7 @@ public class ArithmeticExpressionEvaluator {
     /**
      * Evaluates a mathematical expression and returns the result as a double.
      *
-     * @param expression The mathematical expression as a string (e.g., "2 + 3 * sin(pi / 2)").
+     * @param expression The mathematical expression as a string (e.g., "{5*5}-[({8-7})]").
      * @param useDegrees If true, trigonometric functions use degrees; otherwise, radians.
      * @return The evaluated result as a double.
      * @throws Exception If the expression is invalid or an error occurs during evaluation.
@@ -63,6 +65,7 @@ public class ArithmeticExpressionEvaluator {
 
     /**
      * Tokenizes the input expression into a list of tokens (numbers, operators, functions, etc.).
+     * Now supports { and [ as delimiters in addition to parentheses.
      *
      * @param expression The input expression string.
      * @return A list of tokens.
@@ -91,7 +94,7 @@ public class ArithmeticExpressionEvaluator {
                     throw new InvalidExpressionException("Invalid function or constant '" + funcName + "' at position " + start);
                 }
                 i--;
-            } else if (Character.isDigit(c) || c == '.' || (c == '-' && (i == 0 || expression.charAt(i - 1) == '(' || isOperator(String.valueOf(expression.charAt(i - 1)))))) {
+            } else if (Character.isDigit(c) || c == '.' || (c == '-' && (i == 0 || expression.charAt(i - 1) == '(' || expression.charAt(i - 1) == '{' || expression.charAt(i - 1) == '[' || isOperator(String.valueOf(expression.charAt(i - 1)))))) {
                 StringBuilder number = new StringBuilder();
                 int start = i;
                 if (c == '-') {
@@ -108,7 +111,7 @@ public class ArithmeticExpressionEvaluator {
                 } catch (NumberFormatException e) {
                     throw new InvalidExpressionException("Invalid number format '" + number + "' at position " + start);
                 }
-            } else if (c == '(' || c == ')' || c == '√' || c == '!' || c == '%') {
+            } else if (c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == '√' || c == '!' || c == '%') {
                 tokens.add(String.valueOf(c));
                 i++;
             } else if (isOperator(String.valueOf(c))) {
@@ -124,10 +127,11 @@ public class ArithmeticExpressionEvaluator {
 
     /**
      * Converts infix tokens to postfix notation using the Shunting Yard algorithm.
+     * Now supports { and [ as opening delimiters and } and ] as closing delimiters.
      *
      * @param tokens The list of infix tokens.
      * @return A list of tokens in postfix order.
-     * @throws InvalidExpressionException If parentheses are mismatched or tokens are invalid.
+     * @throws InvalidExpressionException If delimiters are mismatched or tokens are invalid.
      */
     private static List<String> toPostfix(List<String> tokens) throws InvalidExpressionException {
         Stack<String> stack = new Stack<>();
@@ -143,19 +147,19 @@ public class ArithmeticExpressionEvaluator {
                 }
             } else if (FUNCTIONS.contains(token) || token.equals("√")) {
                 stack.push(token);
-            } else if (token.equals("(")) {
+            } else if (token.equals("(") || token.equals("{") || token.equals("[")) {
                 stack.push(token);
-            } else if (token.equals(")")) {
-                while (!stack.isEmpty() && !stack.peek().equals("(")) {
+            } else if (token.equals(")") || token.equals("}") || token.equals("]")) {
+                while (!stack.isEmpty() && !isOpeningDelimiter(stack.peek())) {
                     output.add(stack.pop());
                 }
-                if (stack.isEmpty()) throw new InvalidExpressionException("Mismatched parentheses");
+                if (stack.isEmpty()) throw new InvalidExpressionException("Mismatched delimiters");
                 stack.pop();
                 if (!stack.isEmpty() && (FUNCTIONS.contains(stack.peek()) || stack.peek().equals("√"))) {
                     output.add(stack.pop());
                 }
             } else if (isOperator(token)) {
-                while (!stack.isEmpty() && !stack.peek().equals("(") && precedence(stack.peek()) >= precedence(token)) {
+                while (!stack.isEmpty() && !isOpeningDelimiter(stack.peek()) && precedence(stack.peek()) >= precedence(token)) {
                     output.add(stack.pop());
                 }
                 stack.push(token);
@@ -166,10 +170,20 @@ public class ArithmeticExpressionEvaluator {
             }
         }
         while (!stack.isEmpty()) {
-            if (stack.peek().equals("(")) throw new InvalidExpressionException("Mismatched parentheses");
+            if (isOpeningDelimiter(stack.peek())) throw new InvalidExpressionException("Mismatched delimiters");
             output.add(stack.pop());
         }
         return output;
+    }
+
+    /**
+     * Helper method to check if a token is an opening delimiter.
+     *
+     * @param token The token to check.
+     * @return True if the token is an opening delimiter, false otherwise.
+     */
+    private static boolean isOpeningDelimiter(String token) {
+        return token.equals("(") || token.equals("{") || token.equals("[");
     }
 
     /**
@@ -257,25 +271,21 @@ public class ArithmeticExpressionEvaluator {
                             double result = Math.pow(a.doubleValue(), b.doubleValue());
                             stack.push(new BigDecimal(result, PRECISION));
                         } else {
-                            // Handle negative base
                             if (b.stripTrailingZeros().scale() <= 0) {
-                                // Exponent is an integer
                                 double result = Math.pow(a.doubleValue(), b.doubleValue());
                                 stack.push(new BigDecimal(result, PRECISION));
                             } else {
-                                // Check if exponent is a fraction with odd denominator
                                 double epsilon = 1e-10;
                                 int max_q = 100;
                                 boolean foundOddDenominator = false;
-                                for (int q = 1; q <= max_q; q += 2) { // Check only odd q
+                                for (int q = 1; q <= max_q; q += 2) {
                                     double qb = q * b.doubleValue();
                                     long p = Math.round(qb);
                                     if (Math.abs(qb - p) < epsilon) {
-                                        // Found a rational approximation p/q with q odd
-                                        double absA = -a.doubleValue(); // |a|
-                                        double root = Math.pow(absA, 1.0 / q); // |a|^(1/q)
-                                        double aRoot = -root; // a^(1/q) = -(|a|^(1/q))
-                                        double result = Math.pow(aRoot, p); // (a^(1/q))^p
+                                        double absA = -a.doubleValue();
+                                        double root = Math.pow(absA, 1.0 / q);
+                                        double aRoot = -root;
+                                        double result = Math.pow(aRoot, p);
                                         stack.push(new BigDecimal(result, PRECISION));
                                         foundOddDenominator = true;
                                         break;
@@ -354,7 +364,7 @@ public class ArithmeticExpressionEvaluator {
     }
 
     /**
-     * Exception thrown when the expression is invalid (e.g., syntax error, mismatched parentheses).
+     * Exception thrown when the expression is invalid (e.g., syntax error, mismatched delimiters).
      */
     static class InvalidExpressionException extends Exception {
         public InvalidExpressionException(String msg) {
